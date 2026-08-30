@@ -1,0 +1,4 @@
+# 仓库内文本统一存 LF（text 归一化）。
+# 注意：core.autocrlf=true 时检出仍为 CRLF（Windows 平台默认），EOL 兼容交由
+# .prettierrc 的 endOfLine: auto 处理，避免 prettier --check 在本地误报。
+* text=auto
