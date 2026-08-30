@@ -4,6 +4,7 @@
   "description": "ClassNest — WakeUp 风格课程表桌面应用",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@11.24.0",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",

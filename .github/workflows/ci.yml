@@ -1,0 +1,45 @@
+# ClassNest CI —— 自动验证（docs/DEVELOPMENT.md §2 验证通过定义）
+# push 到 main 与 PR 时运行：lint / format:check / test / build 全绿才允许合并（AGENTS.md §14）。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          # 与本地一致的 pnpm 11：仓库 pnpm-workspace.yaml 使用 pnpm 10.1+ 的 allowBuilds 字段，
+          # pnpm 9 无法识别且把无 packages 字段的 workspace 解析为非法（setup-node 缓存步骤报错）。
+          version: 11.24.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Format check
+        run: pnpm run format:check
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
