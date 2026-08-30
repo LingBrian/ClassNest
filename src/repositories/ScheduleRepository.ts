@@ -49,7 +49,11 @@ function nowIso(): string {
 
 /**
  * 课表 Repository：课表 CRUD + 新建课表三件套（schedule + 默认 timetable(含节次) + 默认 schedule_style）。
- * 三件套在同一事务内完成（docs/tech.md §34、docs/DATABASE.md §6）。
+ * 三件套在同一流程内完成（docs/tech.md §34、docs/DATABASE.md §6）。
+ * 注意：不能使用裸 BEGIN/COMMIT。@tauri-apps/plugin-sql 底层是 sqlx 连接池（默认多连接），
+ * 裸 BEGIN 会落在池中某一连接而后续写落在其他连接，导致 SQLITE_BUSY（code 5）。
+ * 因此这里顺序执行全部写入；中途失败通过「删除已插入的 schedule（级联清课程/时间段/外观/调课）
+ * + 显式删除独立 timetable」做补偿，保证不留半成品（见 AGENTS.md §9）。
  */
 export class ScheduleRepository {
   constructor(private readonly db: RepositoryDb = getRepositoryDb()) {}
@@ -71,7 +75,9 @@ export class ScheduleRepository {
     const firstDayOfWeek = input.firstDayOfWeek ?? 1
     const sectionCount = input.sectionCount ?? 12
 
-    await this.db.execute('BEGIN')
+    // 记录已插入的 id，失败时需显式补偿删除（timetable 是独立表，schedule 删除不级联）。
+    let scheduleId: number | null = null
+    let timetableId: number | null = null
     try {
       const scheduleRows = await this.db.select<{ id: number }>(
         `INSERT INTO schedule
@@ -89,16 +95,15 @@ export class ScheduleRepository {
           now,
         ],
       )
-      const scheduleId = scheduleRows[0]?.id
-      if (scheduleId === undefined) throw new Error('create schedule failed: no id returned')
+      scheduleId = scheduleRows[0]?.id ?? null
+      if (scheduleId === null) throw new Error('create schedule failed: no id returned')
 
       const ttRows = await this.db.select<{ id: number }>(
         `INSERT INTO timetable (name, is_default) VALUES (?, 1) RETURNING id`,
         ['默认时间表'],
       )
-      const timetableId = ttRows[0]?.id
-      if (timetableId === undefined)
-        throw new Error('create schedule failed: default timetable no id')
+      timetableId = ttRows[0]?.id ?? null
+      if (timetableId === null) throw new Error('create schedule failed: default timetable no id')
 
       await this.db.execute(`UPDATE schedule SET time_table_id = ? WHERE id = ?`, [
         timetableId,
@@ -115,13 +120,27 @@ export class ScheduleRepository {
       }
 
       await this.db.execute(`INSERT INTO schedule_style (schedule_id) VALUES (?)`, [scheduleId])
-      await this.db.execute('COMMIT')
 
       const created = await this.findById(scheduleId)
-      if (!created) throw new Error('create schedule failed: not found after commit')
+      if (!created) throw new Error('create schedule failed: not found after write')
       return created
     } catch (error) {
-      await this.db.execute('ROLLBACK')
+      // 补偿：删除本流程已创建的 schedule（级联清除课程/时间段/调课/外观）与独立 timetable（含其节次），
+      // 保证三件套不留半成品。补偿失败时仍然抛出原始错误（不吞掉主错误）。
+      if (scheduleId !== null) {
+        try {
+          await this.db.execute(`DELETE FROM schedule WHERE id = ?`, [scheduleId])
+        } catch {
+          // 忽略补偿失败，原错误继续抛出
+        }
+      }
+      if (timetableId !== null) {
+        try {
+          await this.db.execute(`DELETE FROM timetable WHERE id = ?`, [timetableId])
+        } catch {
+          // 忽略补偿失败，原错误继续抛出
+        }
+      }
       throw error
     }
   }
