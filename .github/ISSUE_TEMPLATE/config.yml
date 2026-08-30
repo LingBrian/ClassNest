@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: ClassNest 项目文档
+    url: https://github.com/LingBrian/ClassNest/tree/main/docs
+    about: 开发前请先阅读 docs/tech.md 与 AGENTS.md 既定的架构、数据模型与开发规范
