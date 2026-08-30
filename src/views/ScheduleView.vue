@@ -88,11 +88,7 @@ watch(
       </div>
     </template>
     <template v-else-if="activeSchedule">
-      <ScheduleHeader
-        :schedule-name="activeSchedule.name"
-        :schedule-id="activeSchedule.id"
-        @open-create="showCreate = true"
-      />
+      <ScheduleHeader :schedule-id="activeSchedule.id" @open-create="showCreate = true" />
       <WeekNavigator
         :current-week="activeSchedule.currentWeek"
         :total-weeks="activeSchedule.totalWeeks"

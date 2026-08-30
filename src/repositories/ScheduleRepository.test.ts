@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createTestDb } from '@/database/sqlite-test-adapter'
+import type { RepositoryDb } from '@/database/repository-db'
 import { ScheduleRepository } from './ScheduleRepository'
 
 describe('ScheduleRepository', () => {
@@ -104,6 +105,83 @@ describe('ScheduleRepository', () => {
     expect(timetables).toHaveLength(2)
     const schedules = await repo.findAll()
     expect(schedules.map((s) => s.name)).toEqual(['课表B'])
+    db.close()
+  })
+
+  it('delete：级联删除时间段与调课记录；其他课表的数据不受影响', async () => {
+    const { db, repo } = await setup()
+    const s1 = await repo.create({ name: '课表A', semesterStart: '2026-09-01' })
+    const s2 = await repo.create({ name: '课表B', semesterStart: '2026-09-01' })
+
+    const weekRuleJson = '{"type":"range","ranges":[{"start":1,"end":16}]}'
+
+    const s1Course = await db.select<{ id: number }>(
+      'INSERT INTO course (schedule_id, name, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?) RETURNING id',
+      [s1.id, '高等数学', '#4C8DFF', '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z'],
+    )
+    const s1Session = await db.select<{ id: number }>(
+      'INSERT INTO course_session (course_id, weekday, start_section, end_section, week_rule) VALUES (?, ?, ?, ?, ?) RETURNING id',
+      [s1Course[0].id, 1, 1, 2, weekRuleJson],
+    )
+    await db.execute(
+      'INSERT INTO course_override (schedule_id, course_session_id, original_date, type) VALUES (?, ?, ?, ?)',
+      [s1.id, s1Session[0].id, '2026-09-01', 'cancel'],
+    )
+
+    const s2Course = await db.select<{ id: number }>(
+      'INSERT INTO course (schedule_id, name, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?) RETURNING id',
+      [s2.id, '大学英语', '#4C8DFF', '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z'],
+    )
+    await db.execute(
+      'INSERT INTO course_session (course_id, weekday, start_section, end_section, week_rule) VALUES (?, ?, ?, ?, ?)',
+      [s2Course[0].id, 2, 1, 2, weekRuleJson],
+    )
+
+    await repo.delete(s1.id)
+
+    const overrides = await db.select<{ id: number }>('SELECT id FROM course_override')
+    expect(overrides).toHaveLength(0)
+    const sessions = await db.select('SELECT * FROM course_session')
+    expect(sessions).toHaveLength(1)
+    const courses = await db.select('SELECT * FROM course')
+    expect(courses).toHaveLength(1)
+    const styles = await db.select<{ schedule_id: number }>(
+      'SELECT schedule_id FROM schedule_style',
+    )
+    expect(styles.map((r) => r.schedule_id)).toEqual([s2.id])
+    const schedules = await repo.findAll()
+    expect(schedules.map((s) => s.name)).toEqual(['课表B'])
+    db.close()
+  })
+
+  it('create 中途失败：补偿删除已创建的 schedule 与 timetable，不留半成品', async () => {
+    const db = createTestDb()
+    await db.applyMigrations()
+
+    // 模拟 schedule_style 写入失败（三件套最后一步），验证补偿清理。
+    const failingDb: RepositoryDb = {
+      select: (sql, params = []) => db.select(sql, params),
+      execute: (sql, params = []) => {
+        if (sql.includes('INSERT INTO schedule_style')) {
+          throw new Error('simulated failure on schedule_style')
+        }
+        return db.execute(sql, params)
+      },
+    }
+
+    const repo = new ScheduleRepository(failingDb)
+    await expect(repo.create({ name: '课表X', semesterStart: '2026-09-01' })).rejects.toThrow(
+      'simulated failure',
+    )
+
+    const schedules = await db.select('SELECT * FROM schedule')
+    expect(schedules).toHaveLength(0)
+    const timetables = await db.select('SELECT * FROM timetable')
+    expect(timetables).toHaveLength(0)
+    const sections = await db.select('SELECT * FROM timetable_section')
+    expect(sections).toHaveLength(0)
+    const styles = await db.select('SELECT * FROM schedule_style')
+    expect(styles).toHaveLength(0)
     db.close()
   })
 

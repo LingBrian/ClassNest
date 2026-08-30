@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { NButton, NDropdown, NSpace, type DropdownOption } from 'naive-ui'
 import { useRouter } from 'vue-router'
+import ScheduleSwitcher from '@/components/schedule/ScheduleSwitcher.vue'
 
-const props = defineProps<{ scheduleName: string; scheduleId: number }>()
+const props = defineProps<{ scheduleId: number }>()
 const emit = defineEmits<{ (e: 'openCreate'): void }>()
 
 const router = useRouter()
@@ -43,7 +44,7 @@ function onMore(key: string): void {
 
 <template>
   <div class="schedule-header">
-    <span class="schedule-name" @click="router.push('/schedules')">{{ props.scheduleName }}</span>
+    <ScheduleSwitcher />
     <NSpace align="center" size="small">
       <NButton size="small" type="primary" @click="router.push('/course/new')">新增课程</NButton>
       <NButton size="small" @click="router.push('/import')">导入</NButton>
@@ -63,10 +64,5 @@ function onMore(key: string): void {
   gap: 12px;
   padding: 10px 16px;
   border-bottom: 1px solid rgba(128, 128, 128, 0.18);
-}
-.schedule-name {
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
 }
 </style>
