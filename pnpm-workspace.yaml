@@ -1,0 +1,6 @@
+# pnpm 11 构建设置（pnpm 11 起 settings 放在 pnpm-workspace.yaml，不再读 package.json 的 pnpm 字段）
+# 显式放行需要运行构建脚本的依赖（其余一律拒绝，符合最小化原则）
+allowBuilds:
+  better-sqlite3: true
+  esbuild: true
+  '@parcel/watcher': true

@@ -1,0 +1,19 @@
+// ClassNest 全局基础样式（Phase 0 骨架）
+// 项目约定：组件样式一律 scoped（CONVENTIONS.md §13）；此处只放 reset 级别的全局基础。
+// 主题（浅色/深色）由外观/全局设置控制，不在此处硬编码。
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}

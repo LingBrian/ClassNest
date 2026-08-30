@@ -1,0 +1,13 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "ClassNest 主窗口默认能力：Core 基础能力 + SQL 插件最小授权（AGENTS.md §6 权限最小化）。",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "sql:allow-load",
+    "sql:allow-select",
+    "sql:allow-execute",
+    "sql:allow-close"
+  ]
+}

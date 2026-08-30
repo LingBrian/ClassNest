@@ -1,0 +1,38 @@
+# Node / Vite
+node_modules/
+dist/
+coverage/
+*.local
+node_modules/.tmp/
+
+# Tauri / Rust
+src-tauri/target/
+src-tauri/gen/
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+.DS_Store
+tsconfig.*.tsbuildinfo
+
+# SQLite local data (classnest.db, see docs/DECISIONS.md D-10)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+data/
+
+# Temp files
+*.tmp
+*.log
+tmp/
+temp/
