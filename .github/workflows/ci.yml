@@ -20,7 +20,9 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          # 与本地一致的 pnpm 11：仓库 pnpm-workspace.yaml 使用 pnpm 10.1+ 的 allowBuilds 字段，
+          # pnpm 9 无法识别且把无 packages 字段的 workspace 解析为非法（setup-node 缓存步骤报错）。
+          version: 11.24.0
 
       - uses: actions/setup-node@v4
         with:
