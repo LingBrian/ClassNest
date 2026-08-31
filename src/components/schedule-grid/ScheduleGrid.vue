@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import type { CourseSession } from '@/models/session'
+import { computed } from 'vue'
+import type { RenderedCourse } from '@/engine/scheduleEngine'
 import DayColumn from './DayColumn.vue'
 import TimeAxis from './TimeAxis.vue'
 
 const props = defineProps<{
-  sessionsByWeekday: Record<number, CourseSession[]>
+  renderedByWeekday: Record<number, RenderedCourse[]>
   sectionCount: number
   todayWeekday: number
   currentWeek: number
@@ -20,11 +21,22 @@ const weekdayLabels: Record<number, string> = {
   6: '周六',
   7: '周日',
 }
+
+const headerStyle = computed(() => ({
+  gridTemplateColumns: '72px repeat(7, minmax(120px, 1fr))',
+}))
+
+// 共享行轨道：节次轴与所有日列使用同一组 grid-template-rows，
+// 课程块按 positionEngine 产出的百分比 absolute 定位，天然与网格线严格对齐（Issue #5）。
+const bodyStyle = computed(() => ({
+  gridTemplateColumns: '72px repeat(7, minmax(120px, 1fr))',
+  gridTemplateRows: `repeat(${Math.max(1, props.sectionCount)}, 64px)`,
+}))
 </script>
 
 <template>
   <div class="schedule-grid">
-    <div class="grid-header" :style="{ gridTemplateColumns: `72px repeat(7, minmax(120px, 1fr))` }">
+    <div class="grid-header" :style="headerStyle">
       <div class="grid-corner">第 {{ props.currentWeek }} 周</div>
       <div
         v-for="w in weekdayOrder"
@@ -35,13 +47,14 @@ const weekdayLabels: Record<number, string> = {
         {{ weekdayLabels[w] }}
       </div>
     </div>
-    <div class="grid-body" :style="{ gridTemplateColumns: `72px repeat(7, minmax(120px, 1fr))` }">
+    <div class="grid-body" :style="bodyStyle">
       <TimeAxis :section-count="props.sectionCount" />
       <DayColumn
         v-for="w in weekdayOrder"
         :key="w"
-        :label="weekdayLabels[w]"
-        :sessions="props.sessionsByWeekday[w] ?? []"
+        :weekday="w"
+        :courses="props.renderedByWeekday[w] ?? []"
+        :section-count="props.sectionCount"
         :is-today="w === props.todayWeekday"
       />
     </div>
@@ -52,7 +65,7 @@ const weekdayLabels: Record<number, string> = {
 .schedule-grid {
   flex: 1;
   overflow: auto;
-  padding: 8px 12px;
+  padding: 0 12px 8px;
 }
 .grid-header,
 .grid-body {
