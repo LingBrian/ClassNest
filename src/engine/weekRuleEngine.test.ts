@@ -68,6 +68,18 @@ describe('weekRuleEngine.isWeekMatched', () => {
     expect(matchesParity('even', 2)).toBe(true)
     expect(matchesParity('even', 3)).toBe(false)
   })
+
+  it('非整数周不命中（不与取整混淆）', () => {
+    const rule = rangeRule(createDefaultWeekRule())
+    expect(isWeekMatched(rule, 1.5)).toBe(false)
+    expect(isWeekMatched(rule, 3.9)).toBe(false)
+  })
+
+  it('totalWeeks 为 0 或负数时返回空列表', () => {
+    const rule = rangeRule(createDefaultWeekRule())
+    expect(getMatchedWeeks(rule, 0)).toEqual([])
+    expect(getMatchedWeeks(rule, -3)).toEqual([])
+  })
 })
 
 describe('weekRuleEngine.weekRulesIntersect', () => {
@@ -87,5 +99,12 @@ describe('weekRuleEngine.weekRulesIntersect', () => {
     const a: WeekRule = { type: 'range', ranges: [{ start: 1, end: 8 }] }
     const b: WeekRule = { type: 'range', ranges: [{ start: 9, end: 16 }] }
     expect(weekRulesIntersect(a, b)).toBe(false)
+  })
+
+  it('至少一方为空的 rules 无交集', () => {
+    const empty: WeekRule = { type: 'custom', ranges: [] }
+    const full: WeekRule = { type: 'range', ranges: [{ start: 1, end: 8 }] }
+    expect(weekRulesIntersect(empty, full)).toBe(false)
+    expect(weekRulesIntersect(empty, empty)).toBe(false)
   })
 })

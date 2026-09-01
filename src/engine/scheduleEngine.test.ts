@@ -143,6 +143,41 @@ describe('scheduleEngine 周过滤', () => {
   })
 })
 
+describe('scheduleEngine 边界', () => {
+  it('无任何时间段时返回空数组', () => {
+    const rendered = build({
+      schedule: makeSchedule(),
+      courses: [makeCourse({ id: 1 })],
+      sessions: [],
+      timetable,
+    })
+    expect(rendered).toEqual([])
+  })
+
+  it('时间表缺少该节次时 startTime/endTime 回退为空串', () => {
+    const tiny: TimeTable = { id: 2, name: '少量节次', isDefault: false, sections: [] }
+    const rendered = build({
+      schedule: makeSchedule(),
+      courses: [makeCourse({ id: 1 })],
+      sessions: [makeSession({ id: 1, startSection: 1, endSection: 2 })],
+      timetable: tiny,
+    })
+    expect(rendered[0]?.startTime).toBe('')
+    expect(rendered[0]?.endTime).toBe('')
+  })
+
+  it('课程不存在于 courses 时回退到默认名称与颜色', () => {
+    const rendered = build({
+      schedule: makeSchedule(),
+      courses: [],
+      sessions: [makeSession({ id: 1, courseId: 99 })],
+      timetable,
+    })
+    expect(rendered[0]?.name).toBe('课程')
+    expect(rendered[0]?.color).toBe('#4C8DFF')
+  })
+})
+
 describe('scheduleEngine 多时间段', () => {
   it('一门课程多个时间段各自渲染', () => {
     const rendered = build({

@@ -96,4 +96,25 @@ describe('positionEngine.getCoursePosition', () => {
     expect(pos.top).toBe(0)
     expect(pos.height).toBe(100)
   })
+
+  it('laneCount 非法值被钳制为至少 1（不会除零）', () => {
+    const pos = getCoursePosition({
+      startSection: 1,
+      endSection: 2,
+      timetable,
+      lane: 0,
+      laneCount: 0,
+    })
+    expect(pos.width).toBe(100)
+    expect(pos.left).toBe(0)
+    const neg = getCoursePosition({
+      startSection: 1,
+      endSection: 2,
+      timetable,
+      lane: 1,
+      laneCount: -1,
+    })
+    expect(neg.width).toBe(100)
+    expect(neg.left).toBe(0)
+  })
 })

@@ -89,6 +89,19 @@ describe('conflictEngine.sessionsOverlap', () => {
     const b = session({ id: 2, courseId: 2, dateStart: '2026-09-14', dateEnd: '2026-09-20' })
     expect(sessionsOverlap(a, b)).toBe(false)
   })
+
+  it('仅一方自定义时间：按节次区间判断', () => {
+    const a = session({ isCustomTime: true, startTime: '10:00', endTime: '11:00' })
+    const b = session({ id: 2, courseId: 2, startSection: 1, endSection: 2 })
+    // 节次 1-2 相交（08:00~09:40），视为冲突
+    expect(sessionsOverlap(a, b)).toBe(true)
+  })
+
+  it('自定义时间区间非法（end<=start）时退化到节次判断', () => {
+    const a = session({ isCustomTime: true, startTime: '11:00', endTime: '10:00' })
+    const b = session({ id: 2, courseId: 2, startSection: 1, endSection: 2 })
+    expect(sessionsOverlap(a, b)).toBe(true)
+  })
 })
 
 describe('conflictEngine.detectConflicts', () => {
