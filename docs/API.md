@@ -227,8 +227,10 @@ interface RenderedCourse {
 ScheduleRepository         // 课表 CRUD；新建课表时同一流程创建 schedule + 默认 timetable + 默认 style
 CourseRepository           // findByScheduleId(scheduleId) / findById / create / update / delete
 CourseSessionRepository    // 课程时间段 CRUD
-ScheduleStyleRepository    // 按 scheduleId 读写外观（Phase 4 落地）
-SettingsRepository         // app_setting 键值读写（Phase 4 落地）
+ScheduleStyleRepository    // findByScheduleId(scheduleId) / update(scheduleId, patch) —— 按 scheduleId 读写外观（已落地）
+                           // 行由新建课表三件套写入、删除课表级联，因此无 create/delete
+SettingsRepository         // get / getAll / set / delete —— app_setting 键值读写（已落地）
+                           // 键：theme / language / active_schedule_id / auto_backup / startup_behavior（仅全局键）
 ```
 
 ### 4.1 依赖注入（DECISIONS D-4，Phase 1 已落地）
@@ -243,7 +245,11 @@ SettingsRepository         // app_setting 键值读写（Phase 4 落地）
 scheduleStore   // schedules、activeScheduleId、activeSchedule
                 // loadSchedules() / switchSchedule() / createSchedule() / deleteSchedule() / updateSchedule()
 courseStore     // 当前课表课程：加载、新增、编辑、删除、刷新
-settingsStore   // 全局设置、课表外观（ScheduleStyle）、theme、language
+settingsStore   // 全局设置、课表外观（ScheduleStyle）、theme、language（已落地）
+                // 课表级外观按 scheduleId 缓存：loadStyle(scheduleId) / updateStyle(scheduleId, patch)（实时写回，失败回滚内存）
+                // styleOf(scheduleId) 取缓存（缺省 DEFAULT_SCHEDULE_STYLE）
+                // 全局键：loadGlobal() / getGlobal(key) / setGlobal(key, value)
+                // theme computed 由 getGlobal('theme') 派生，App.vue 以此切换深色/浅色
 uiStore         // Drawer / Modal / 当前周 / 导入弹窗 / 导出弹窗 等 UI 状态
 ```
 
