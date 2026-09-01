@@ -4,7 +4,8 @@ import { NButton, NEmpty, NSpin } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import { useCourseStore } from '@/stores/course'
 import { useScheduleStore } from '@/stores/schedule'
-import type { CourseSession } from '@/models/session'
+import { build as buildScheduleEngine, type RenderedCourse } from '@/engine/scheduleEngine'
+import type { TimeTable } from '@/models/timetable'
 import ScheduleCreateDialog from '@/components/schedule/ScheduleCreateDialog.vue'
 import ScheduleGrid from '@/components/schedule-grid/ScheduleGrid.vue'
 import ScheduleHeader from '@/components/schedule-grid/ScheduleHeader.vue'
@@ -24,15 +25,43 @@ const todayWeekday = computed(() => {
   return day === 0 ? 7 : day
 })
 
-const sessionsByWeekday = computed(() => {
-  const map: Record<number, CourseSession[]> = {}
-  for (const session of courseStore.sessions) {
-    const list = map[session.weekday] ?? []
-    list.push(session)
-    map[session.weekday] = list
+// 节次轴时间表：仅携带节次序号（空时间触发 positionEngine 的节次索引回退），
+// 使左侧「第 i 节」行与右侧课程块按等分行严格对齐（Issue #5）。
+const sectionAxisTimetable = computed<TimeTable | null>(() => {
+  const schedule = activeSchedule.value
+  if (!schedule) return null
+  const sectionCount = Math.max(1, schedule.sectionCount)
+  return {
+    id: 0,
+    name: '默认时间表',
+    isDefault: true,
+    sections: Array.from({ length: sectionCount }, (_, i) => ({
+      id: i + 1,
+      sectionNumber: i + 1,
+      startTime: '',
+      endTime: '',
+    })),
+  }
+})
+
+const renderedByWeekday = computed<Record<number, RenderedCourse[]>>(() => {
+  const schedule = activeSchedule.value
+  const timetable = sectionAxisTimetable.value
+  if (!schedule || !timetable) return {}
+  const rendered = buildScheduleEngine({
+    schedule,
+    courses: courseStore.courses,
+    sessions: courseStore.sessions,
+    timetable,
+  })
+  const map: Record<number, RenderedCourse[]> = {}
+  for (const rc of rendered) {
+    const list = map[rc.weekday] ?? []
+    list.push(rc)
+    map[rc.weekday] = list
   }
   for (const key of Object.keys(map)) {
-    map[Number(key)].sort((a, b) => a.startSection - b.startSection)
+    map[Number(key)]!.sort((a, b) => a.startSection - b.startSection)
   }
   return map
 })
@@ -95,7 +124,7 @@ watch(
         @update-week="onUpdateWeek"
       />
       <ScheduleGrid
-        :sessions-by-weekday="sessionsByWeekday"
+        :rendered-by-weekday="renderedByWeekday"
         :section-count="activeSchedule.sectionCount"
         :today-weekday="todayWeekday"
         :current-week="activeSchedule.currentWeek"
