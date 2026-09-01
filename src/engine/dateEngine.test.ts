@@ -67,6 +67,13 @@ describe('dateEngine.getCurrentWeek', () => {
   it('开学前返回 1', () => {
     expect(getCurrentWeek('2026-09-01', '2026-08-28')).toBe(1)
   })
+
+  it('学期中后段返回正确的大周数', () => {
+    // 2026-09-01（周二）开学，第 16 周全周为 12-14~12-20
+    expect(getCurrentWeek('2026-09-01', '2026-12-14')).toBe(16)
+    expect(getCurrentWeek('2026-09-01', '2026-12-20')).toBe(16)
+    expect(getCurrentWeek('2026-09-01', '2026-12-21')).toBe(17)
+  })
 })
 
 describe('dateEngine 辅助', () => {
@@ -90,5 +97,19 @@ describe('dateEngine 辅助', () => {
     expect(timeToMinutes('24:00')).toBeNull()
     expect(timeToMinutes('08:60')).toBeNull()
     expect(timeToMinutes('abc')).toBeNull()
+  })
+
+  it('timeToMinutes 非法/缺失分钟、空串返回 null', () => {
+    expect(timeToMinutes('')).toBeNull()
+    expect(timeToMinutes('8')).toBeNull()
+    expect(timeToMinutes('8:0')).toBeNull()
+    expect(timeToMinutes('8:100')).toBeNull()
+    expect(timeToMinutes('a:00')).toBeNull()
+  })
+
+  it('parseDate 非法输入抛错', () => {
+    expect(() => parseDate('2026-13-01')).toThrow()
+    expect(() => parseDate('abc')).toThrow()
+    expect(() => parseDate('2026-00-10')).toThrow()
   })
 })
